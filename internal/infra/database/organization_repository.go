@@ -10,7 +10,7 @@ import (
 const OrganizationTableName = "organizations"
 
 type organization struct {
-	Id          uint64     `db:"id, omitempty"`
+	Id          uint64     `db:"id,omitempty"`
 	UserId      uint64     `db:"user_id"`
 	Name        string     `db:"name"`
 	Description *string    `db:"description"`
@@ -141,7 +141,7 @@ func (r organizationRepository) mapModelToDomain(o organization) domain.Organiza
 
 func (r organizationRepository) mapModelToDomainCollection(orgs []organization) []domain.Organization {
 	organizations := make([]domain.Organization, len(orgs))
-	for i, _ := range orgs {
+	for i := range orgs {
 		organizations[i] = r.mapModelToDomain(orgs[i])
 	}
 	return organizations

@@ -10,7 +10,7 @@ import (
 const RoomsTableName = "rooms"
 
 type room struct {
-	Id             uint64     `db:"id, omitempty"`
+	Id             uint64     `db:"id,omitempty"`
 	OrganizationId uint64     `db:"organization_id"`
 	Name           string     `db:"name"`
 	Descriptoin    *string    `db:"description"`
@@ -20,7 +20,12 @@ type room struct {
 }
 
 type RoomRepository interface {
-	FindByOrgId (oId uint64)([]domain.Room, error)
+	FindByOrgId(oId uint64) ([]domain.Room, error)
+	FindByRoomId(rId uint64) (domain.Room, error)
+	Save(o domain.Room) (domain.Room, error)
+	Find(id uint64) (domain.Room, error)
+	Update(rm domain.Room) (domain.Room, error)
+	Delete(id uint64) error
 }
 
 type roomRepository struct {
@@ -36,8 +41,8 @@ func NewRoomRepository(session db.Session) RoomRepository {
 
 }
 
-func (r organizationRepository) Save(o domain.Room) (domain.Room, error) {
-	rms := r.mapDomainToModel(r)
+func (r roomRepository) Save(rm domain.Room) (domain.Room, error) {
+	rms := r.mapDomainToModel(rm)
 	now := time.Now()
 	rms.CreatedDate = now
 	rms.UpdatedDate = now
@@ -47,14 +52,28 @@ func (r organizationRepository) Save(o domain.Room) (domain.Room, error) {
 		return domain.Room{}, err
 	}
 
-	r = r.mapModelToDomain(rms)
+	rm = r.mapModelToDomain(rms)
+	return rm, nil
+}
+
+func (r roomRepository) Find(id uint64) (domain.Room, error) {
+	var rm room
+
+	err := r.coll.
+		Find(db.Cond{"id": id, "deleted_date": nil}).
+		One(&rm)
+	if err != nil {
+		return domain.Room{}, err
+	}
+
+	o := r.mapModelToDomain(rm)
 	return o, nil
 }
 
-func(r roomRepository) FindByOrgId (oId uint64)([]domain.Room, error){
-	var rooms []room 
+func (r roomRepository) FindByOrgId(oId uint64) ([]domain.Room, error) {
+	var rooms []room
 
-	err := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil,}).All(&rooms)
+	err := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil}).All(&rooms)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +81,40 @@ func(r roomRepository) FindByOrgId (oId uint64)([]domain.Room, error){
 	return rms, nil
 }
 
+func (r roomRepository) FindByRoomId(rId uint64) (domain.Room, error) {
+	var rm room
+
+	err := r.coll.Find(db.Cond{"id": rId, "deleted_date": nil}).One(&rm)
+	if err != nil {
+		return domain.Room{}, err
+	}
+	rms := r.mapModelToDomain(rm)
+	return rms, nil
+}
+
+func (r roomRepository) Update(rm domain.Room) (domain.Room, error) {
+	rms := r.mapDomainToModel(rm)
+	rms.UpdatedDate = time.Now()
+
+	err := r.coll.Find(db.Cond{"id": rm.Id, "deleted_date": nil}).Update(&rms)
+	if err != nil {
+		return domain.Room{}, err
+	}
+
+	rm = r.mapModelToDomain(rms)
+	return rm, nil
+}
+
+func (r roomRepository) Delete(id uint64) error {
+	return r.coll.Find(db.Cond{"id": id, "deleted_date": nil}).Update(map[string]interface{}{"deleted_date": time.Now()})
+}
+
 func (r roomRepository) mapDomainToModel(rm domain.Room) room {
 	return room{
 		Id:             rm.Id,
 		OrganizationId: rm.OrganizationId,
 		Name:           rm.Name,
-		Descriptoin:    rm.Descriptoin,
+		Descriptoin:    rm.Description,
 		CreatedDate:    rm.CreatedDate,
 		UpdatedDate:    rm.UpdatedDate,
 		DeletedDate:    rm.DeletedDate,
@@ -79,7 +126,7 @@ func (r roomRepository) mapModelToDomain(rm room) domain.Room {
 		Id:             rm.Id,
 		OrganizationId: rm.OrganizationId,
 		Name:           rm.Name,
-		Descriptoin:    rm.Descriptoin,
+		Description:    rm.Descriptoin,
 		CreatedDate:    rm.CreatedDate,
 		UpdatedDate:    rm.UpdatedDate,
 		DeletedDate:    rm.DeletedDate,
@@ -88,7 +135,7 @@ func (r roomRepository) mapModelToDomain(rm room) domain.Room {
 
 func (r roomRepository) mapModelToDomainCollection(rooms []room) []domain.Room {
 	rms := make([]domain.Room, len(rooms))
-	for i, _ := range rooms {
+	for i := range rooms {
 		rms[i] = r.mapModelToDomain(rooms[i])
 	}
 	return rms

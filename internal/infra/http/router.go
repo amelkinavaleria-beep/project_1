@@ -56,8 +56,31 @@ func Router(cont container.Container) http.Handler {
 					apiRouter,
 					cont.OrganizationController,
 					cont.OrganizationService)
+
+				RoomRouter(
+					apiRouter,
+					cont.RoomController,
+					cont.RoomService,
+					cont.OrganizationService)
+
+				DeviceRouter(apiRouter,
+					cont.DeviceController,
+					cont.DeviceService,
+					cont.OrganizationService)
+
+				MeasurementRouter(apiRouter,
+					cont.MeasurementController,
+					cont.MeasurementService,
+					cont.DeviceService)
+
+				EventRouter(apiRouter,
+					cont.EventController,
+					cont.DeviceService,
+					cont.OrganizationService)
+
 				apiRouter.Handle("/*", NotFoundJSON())
 			})
+
 		})
 	})
 
@@ -138,5 +161,85 @@ func OrganizationRouter(r chi.Router, oc controllers.OrganizationController, os 
 		apiRouter.With(opom).Put("/{orgId}", oc.Update())
 		apiRouter.With(opom).Delete("/{orgId}", oc.Delete())
 
+	})
+}
+
+func RoomRouter(
+	r chi.Router,
+	rc controllers.RoomController,
+	rs app.RoomService,
+	os app.OrganizationService,
+) {
+	opom := middlewares.PathObject("orgId", controllers.OrgKey, os)
+	rpom := middlewares.PathObject("roomId", controllers.RoomKey, rs)
+
+	r.Route("/organizations/{orgId}/rooms", func(roomRouter chi.Router) {
+		roomRouter.Use(opom)
+
+		roomRouter.Post("/", rc.Save())
+		roomRouter.Get("/", rc.FindList())
+
+		roomRouter.Route("/{roomId}", func(roomRouter chi.Router) {
+			roomRouter.Use(rpom)
+
+			roomRouter.Get("/", rc.Find())
+			roomRouter.Put("/", rc.Update())
+			roomRouter.Delete("/", rc.Delete())
+		})
+	})
+}
+
+func DeviceRouter(
+	r chi.Router,
+	dc controllers.DeviceController,
+	ds app.DeviceService,
+	os app.OrganizationService,
+) {
+	opom := middlewares.PathObject("orgId", controllers.OrgKey, os)
+	dpom := middlewares.PathObject("deviceId", controllers.DeviceKey, ds)
+
+	r.Route("/organizations/{orgId}/devices", func(deviceRouter chi.Router) {
+		deviceRouter.Use(opom)
+		deviceRouter.Post("/", dc.Save())
+		deviceRouter.Get("/", dc.FindList())
+
+		deviceRouter.Route("/{deviceId}", func(deviceRouter chi.Router) {
+			deviceRouter.Use(dpom)
+			deviceRouter.Get("/", dc.Find())
+			deviceRouter.Put("/", dc.Update())
+			deviceRouter.Delete("/", dc.Delete())
+		})
+	})
+}
+
+func MeasurementRouter(
+	r chi.Router,
+	mc controllers.MeasurementController,
+	ms app.MeasurementService,
+	ds app.DeviceService,
+) {
+	// Мідлвар для перевірки існування пристрою перед роботою з його вимірюваннями
+	dpom := middlewares.PathObject("deviceId", controllers.DeviceKey, ds)
+
+	r.Route("/devices/{deviceId}/measurements", func(mRouter chi.Router) {
+		mRouter.Use(dpom)
+		mRouter.Post("/", mc.Save())    // Прийом даних від сенсора [10]
+		mRouter.Get("/", mc.FindList()) // Перегляд за день/тиждень/місяць [10]
+	})
+}
+
+func EventRouter(
+	r chi.Router,
+	ec controllers.EventController,
+	ds app.DeviceService,
+	os app.OrganizationService,
+) {
+	opom := middlewares.PathObject("orgId", controllers.OrgKey, os)
+	dpom := middlewares.PathObject("deviceId", controllers.DeviceKey, ds)
+
+	r.Route("/organizations/{orgId}/devices/{deviceId}/events", func(eventRouter chi.Router) {
+		eventRouter.Use(opom, dpom)
+		eventRouter.Post("/", ec.Save())
+		eventRouter.Get("/", ec.FindList())
 	})
 }

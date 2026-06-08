@@ -1,0 +1,9 @@
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    device_id BIGINT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    room_id BIGINT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    action VARCHAR(10) NOT NULL,
+    created_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_date TIMESTAMP NULL
+);

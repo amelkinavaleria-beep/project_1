@@ -101,7 +101,7 @@ func (c OrganizationController) Update() http.HandlerFunc {
 
 		org, err = c.orgService.Update(org)
 		if err != nil {
-			log.Printf("OrganizationController.Update(c.orgService.Update): %s, err")
+			log.Printf("OrganizationController.Update(c.orgService.Update): %s", err)
 			InternalServerError(w, err)
 			return
 		}
@@ -123,7 +123,7 @@ func (c OrganizationController) Delete() http.HandlerFunc {
 
 		err := c.orgService.Delete(org.Id)
 		if err != nil {
-			log.Printf("OrganizationController.Delete(c.orgService.Delete): %s, err")
+			log.Printf("OrganizationController.Delete(c.orgService.Delete): %s", err)
 			InternalServerError(w, err)
 			return
 		}
