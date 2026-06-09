@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/app"
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/domain"
@@ -49,15 +50,19 @@ func (c OrganizationController) Save() http.HandlerFunc {
 func (c OrganizationController) FindList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value(UserKey).(domain.User)
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 
-		orgs, err := c.orgService.FindList(user.Id)
+		orgs, err := c.orgService.FindList(user.Id, page)
 		if err != nil {
-			log.Printf("OrganizationController.FindList(c.orgServie.FindList): %s", err)
 			InternalServerError(w, err)
 			return
 		}
 
-		Success(w, resources.OrganizationDto{}.DomainToDtoCollection(orgs))
+		Success(w, map[string]interface{}{
+			"items": resources.OrganizationDto{}.DomainToDtoCollection(orgs),
+			"total": orgs.Total,
+			"pages": orgs.Pages,
+		})
 	}
 }
 
@@ -120,14 +125,13 @@ func (c OrganizationController) Delete() http.HandlerFunc {
 			return
 		}
 
-
 		err := c.orgService.Delete(org.Id)
 		if err != nil {
 			log.Printf("OrganizationController.Delete(c.orgService.Delete): %s", err)
 			InternalServerError(w, err)
 			return
 		}
-		
+
 		noContent(w)
 	}
 }

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"math"
 	"time"
 
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/domain"
@@ -10,19 +11,19 @@ import (
 const DevicesTableName = "devices"
 
 type device struct {
-	Id               uint64                 `db:"id,omitempty"`
-	OrganizationId   uint64                 `db:"organization_id"`
-	RoomId           *uint64                `db:"room_id"`
-	GUID             string                 `db:"guid"`
-	InventoryNumber  string                 `db:"inventory_number"`
-	SerialNumber     string                 `db:"serial_number"`
-	Characteristics  string                 `db:"characteristics"`
-	Category         domain.DeviceCategory  `db:"category"`
-	Units            string                 `db:"units"`
-	PowerConsumption float64                `db:"power_consumption"`
-	CreatedDate      time.Time              `db:"created_date"`
-	UpdatedDate      time.Time              `db:"updated_date"`
-	DeletedDate      *time.Time             `db:"deleted_date"`
+	Id               uint64                `db:"id,omitempty"`
+	OrganizationId   uint64                `db:"organization_id"`
+	RoomId           *uint64               `db:"room_id"`
+	GUID             string                `db:"guid"`
+	InventoryNumber  string                `db:"inventory_number"`
+	SerialNumber     string                `db:"serial_number"`
+	Characteristics  string                `db:"characteristics"`
+	Category         domain.DeviceCategory `db:"category"`
+	Units            string                `db:"units"`
+	PowerConsumption float64               `db:"power_consumption"`
+	CreatedDate      time.Time             `db:"created_date"`
+	UpdatedDate      time.Time             `db:"updated_date"`
+	DeletedDate      *time.Time            `db:"deleted_date"`
 }
 
 type DeviceRepository interface {
@@ -30,7 +31,7 @@ type DeviceRepository interface {
 	Find(id uint64) (domain.Device, error)
 	Update(d domain.Device) (domain.Device, error)
 	Delete(id uint64) error
-	FindByOrgId(oId uint64) ([]domain.Device, error)
+	FindList(p domain.Pagination, oId uint64) (domain.Devices, error)
 }
 
 type deviceRepository struct {
@@ -50,7 +51,7 @@ func (r deviceRepository) Save(d domain.Device) (domain.Device, error) {
 	now := time.Now()
 	dev.CreatedDate = now
 	dev.UpdatedDate = now
-	
+
 	err := r.coll.InsertReturning(&dev)
 	if err != nil {
 		return domain.Device{}, err
@@ -70,7 +71,7 @@ func (r deviceRepository) Find(id uint64) (domain.Device, error) {
 func (r deviceRepository) Update(d domain.Device) (domain.Device, error) {
 	dev := r.mapDomainToModel(d)
 	dev.UpdatedDate = time.Now()
-	
+
 	err := r.coll.Find(db.Cond{"id": d.Id, "deleted_date": nil}).Update(&dev)
 	if err != nil {
 		return domain.Device{}, err
@@ -84,15 +85,34 @@ func (r deviceRepository) Delete(id uint64) error {
 	})
 }
 
-func (r deviceRepository) FindByOrgId(oId uint64) ([]domain.Device, error) {
-	var devices []device
-	err := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil}).All(&devices)
-	if err != nil {
-		return nil, err
+func (r deviceRepository) FindList(p domain.Pagination, oId uint64) (domain.Devices, error) {
+	var devs []device
+	if p.Page == 0 {
+		p.Page = 1
 	}
-	return r.mapModelToDomainCollection(devices), nil
-}
+	if p.CountPerPage == 0 {
+		p.CountPerPage = 20
+	}
 
+	query := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil})
+
+	res := query.Paginate(uint(p.CountPerPage))
+	err := res.Page(uint(p.Page)).All(&devs)
+	if err != nil {
+		return domain.Devices{}, err
+	}
+
+	totalCount, err := res.TotalEntries()
+	if err != nil {
+		return domain.Devices{}, err
+	}
+
+	return domain.Devices{
+		Items: r.mapModelToDomainCollection(devs),
+		Total: totalCount,
+		Pages: uint(math.Ceil(float64(totalCount) / float64(p.CountPerPage))),
+	}, nil
+}
 func (r deviceRepository) mapDomainToModel(d domain.Device) device {
 	return device{
 		Id:               d.Id,

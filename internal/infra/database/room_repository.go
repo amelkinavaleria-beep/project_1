@@ -1,6 +1,7 @@
 package database
 
 import (
+	"math"
 	"time"
 
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/domain"
@@ -20,7 +21,7 @@ type room struct {
 }
 
 type RoomRepository interface {
-	FindByOrgId(oId uint64) ([]domain.Room, error)
+	FindList(p domain.Pagination, oId uint64) (domain.Rooms, error)
 	FindByRoomId(rId uint64) (domain.Room, error)
 	Save(o domain.Room) (domain.Room, error)
 	Find(id uint64) (domain.Room, error)
@@ -70,15 +71,31 @@ func (r roomRepository) Find(id uint64) (domain.Room, error) {
 	return o, nil
 }
 
-func (r roomRepository) FindByOrgId(oId uint64) ([]domain.Room, error) {
-	var rooms []room
-
-	err := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil}).All(&rooms)
-	if err != nil {
-		return nil, err
+func (r roomRepository) FindList(p domain.Pagination, oId uint64) (domain.Rooms, error) {
+	var rms []room
+	if p.Page == 0 {
+		p.Page = 1
 	}
-	rms := r.mapModelToDomainCollection(rooms)
-	return rms, nil
+	if p.CountPerPage == 0 {
+		p.CountPerPage = 20
+	}
+
+	res := r.coll.Find(db.Cond{"organization_id": oId, "deleted_date": nil}).Paginate(uint(p.CountPerPage))
+	err := res.Page(uint(p.Page)).All(&rms)
+	if err != nil {
+		return domain.Rooms{}, err
+	}
+
+	total, err := res.TotalEntries()
+	if err != nil {
+		return domain.Rooms{}, err
+	}
+
+	return domain.Rooms{
+		Items: r.mapModelToDomainCollection(rms),
+		Total: total,
+		Pages: uint(math.Ceil(float64(total) / float64(p.CountPerPage))),
+	}, nil
 }
 
 func (r roomRepository) FindByRoomId(rId uint64) (domain.Room, error) {

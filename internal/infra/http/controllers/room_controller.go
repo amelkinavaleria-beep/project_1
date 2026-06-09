@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/app"
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/domain"
@@ -50,14 +51,20 @@ func (c RoomController) FindList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		org := r.Context().Value(OrgKey).(domain.Organization)
 
-		rms, err := c.rmService.FindList(org.Id)
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+
+		rooms, err := c.rmService.FindList(org.Id, page)
 		if err != nil {
-			log.Printf("RoomController.FindList(c.rmServie.FindList): %s", err)
+			log.Printf("RoomController.FindList: %s", err)
 			InternalServerError(w, err)
 			return
 		}
 
-		Success(w, resources.RoomDto{}.DomainToDtoCollection(rms))
+		Success(w, map[string]interface{}{
+			"items": resources.RoomDto{}.DomainToDtoCollection(rooms.Items),
+			"total": rooms.Total,
+			"pages": rooms.Pages,
+		})
 	}
 }
 

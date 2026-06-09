@@ -24,3 +24,9 @@ const (
 	Sensor   DeviceCategory = "SENSOR"
 	Actuator DeviceCategory = "ACTUATOR"
 )
+
+type Devices struct {
+	Items []Device
+	Total uint64
+	Pages uint
+}

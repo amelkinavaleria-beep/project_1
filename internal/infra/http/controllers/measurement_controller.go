@@ -57,6 +57,11 @@ func (c MeasurementController) FindList() http.HandlerFunc {
 			InternalServerError(w, err)
 			return
 		}
-		Success(w, resources.MeasurementDto{}.DomainToDtoCollection(measurements))
+
+		Success(w, map[string]interface{}{
+			"items": resources.MeasurementDto{}.DomainToDtoCollection(measurements),
+			"total": measurements.Total,
+			"pages": measurements.Pages,
+		})
 	}
 }

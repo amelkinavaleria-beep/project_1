@@ -11,3 +11,9 @@ type Room struct {
 	UpdatedDate    time.Time
 	DeletedDate    *time.Time
 }
+
+type Rooms struct {
+	Items []Room
+	Total uint64
+	Pages uint
+}

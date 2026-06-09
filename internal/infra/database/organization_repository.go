@@ -1,6 +1,7 @@
 package database
 
 import (
+	"math"
 	"time"
 
 	"github.com/BohdanBoriak/boilerplate-go-back/internal/domain"
@@ -30,7 +31,7 @@ type organizationRepository struct {
 
 type OrganizationRepository interface {
 	Save(o domain.Organization) (domain.Organization, error)
-	FindList(uId uint64) ([]domain.Organization, error)
+	FindList(uId uint64, p domain.Pagination) (domain.Organizations, error)
 	Find(id uint64) (domain.Organization, error)
 	Update(o domain.Organization) (domain.Organization, error)
 	Delete(id uint64) error
@@ -58,22 +59,28 @@ func (r organizationRepository) Save(o domain.Organization) (domain.Organization
 	return o, nil
 }
 
-func (r organizationRepository) FindList(uId uint64) ([]domain.Organization, error) {
+func (r organizationRepository) FindList(uId uint64, p domain.Pagination) (domain.Organizations, error) {
 	var orgs []organization
-
-	err := r.coll.
-		Find(db.Cond{
-			"user_id":      uId,
-			"deleted_date": nil,
-		}).
-		All(&orgs)
-	if err != nil {
-		return nil, err
+	// Встановлення значень за замовчуванням
+	if p.Page == 0 {
+		p.Page = 1
+	}
+	if p.CountPerPage == 0 {
+		p.CountPerPage = 20
 	}
 
-	organizations := r.mapModelToDomainCollection(orgs)
-	return organizations, nil
+	res := r.coll.Find(db.Cond{"user_id": uId, "deleted_date": nil}).Paginate(uint(p.CountPerPage))
+	err := res.Page(uint(p.Page)).All(&orgs)
+	if err != nil {
+		return domain.Organizations{}, err
+	}
 
+	total, _ := res.TotalEntries()
+	return domain.Organizations{
+		Items: r.mapModelToDomainCollection(orgs),
+		Total: total,
+		Pages: uint(math.Ceil(float64(total) / float64(p.CountPerPage))),
+	}, nil
 }
 
 func (r organizationRepository) Find(id uint64) (domain.Organization, error) {

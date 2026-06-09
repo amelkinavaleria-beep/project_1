@@ -16,3 +16,9 @@ type Organization struct {
 	UpdatedDate time.Time
 	DeletedDate *time.Time
 }
+
+type Organizations struct {
+    Items []Organization
+    Total uint64
+    Pages uint
+}

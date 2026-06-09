@@ -13,7 +13,7 @@ type roomService struct {
 
 type RoomService interface {
 	Save(rm domain.Room) (domain.Room, error)
-	FindList(orgId uint64) ([]domain.Room, error)
+	FindList(orgId uint64, page int) (domain.Rooms, error)
 	Update(rm domain.Room) (domain.Room, error)
 	Delete(id uint64) error
 	Find(id uint64) (interface{}, error)
@@ -66,11 +66,10 @@ func (s roomService) Delete(id uint64) error {
 	return nil
 }
 
-func (s roomService) FindList(orgId uint64) ([]domain.Room, error) {
-	rooms, err := s.roomRepo.FindByOrgId(orgId)
-	if err != nil {
-		log.Printf("roomService.FindList: %s", err)
-		return nil, err
+func (s roomService) FindList(orgId uint64, page int) (domain.Rooms, error) {
+	pagination := domain.Pagination{
+		Page:         uint64(page),
+		CountPerPage: 20,
 	}
-	return rooms, nil
+	return s.roomRepo.FindList(pagination, orgId)
 }

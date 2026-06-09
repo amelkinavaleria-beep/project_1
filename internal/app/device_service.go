@@ -13,7 +13,7 @@ type DeviceService interface {
 	Find(id uint64) (interface{}, error)
 	Update(d domain.Device) (domain.Device, error)
 	Delete(id uint64) error
-	FindList(orgId uint64) ([]domain.Device, error)
+	FindList(orgId uint64, page int) (domain.Devices, error)
 }
 
 type deviceService struct {
@@ -70,13 +70,12 @@ func (s deviceService) Delete(id uint64) error {
 	return nil
 }
 
-func (s deviceService) FindList(orgId uint64) ([]domain.Device, error) {
-	devices, err := s.deviceRepo.FindByOrgId(orgId)
-	if err != nil {
-		log.Printf("deviceService.FindList: %s", err)
-		return nil, err
+func (s deviceService) FindList(orgId uint64, page int) (domain.Devices, error) {
+	pagination := domain.Pagination{
+		Page:         uint64(page),
+		CountPerPage: 20,
 	}
-	return devices, nil
+	return s.deviceRepo.FindList(pagination, orgId)
 }
 
 func (s deviceService) validateDevice(d domain.Device) error {

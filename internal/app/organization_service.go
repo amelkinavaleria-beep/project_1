@@ -14,7 +14,7 @@ type organizationService struct {
 
 type OrganizationService interface {
 	Save(o domain.Organization) (domain.Organization, error)
-	FindList(uId uint64) ([]domain.Organization, error)
+	FindList(uId uint64, page int) (domain.Organizations, error)
 	Find(id uint64) (interface{}, error)
 	Update(o domain.Organization) (domain.Organization, error)
 	Delete(id uint64) error
@@ -37,15 +37,9 @@ func (s organizationService) Save(o domain.Organization) (domain.Organization, e
 	return org, nil
 }
 
-func (s organizationService) FindList(uId uint64) ([]domain.Organization, error) {
-	orgs, err := s.orgRepo.FindList(uId)
-	if err != nil {
-		log.Printf("organizationService.FindList(s.orgRepo.FindList): %s", err)
-		return nil, err
-	}
-
-	return orgs, nil
-
+func (s organizationService) FindList(uId uint64, page int) (domain.Organizations, error) {
+	pagination := domain.Pagination{Page: uint64(page), CountPerPage: 20}
+	return s.orgRepo.FindList(uId, pagination)
 }
 
 func (s organizationService) Find(id uint64) (interface{}, error) {
@@ -55,14 +49,17 @@ func (s organizationService) Find(id uint64) (interface{}, error) {
 		return nil, err
 	}
 
-	org.Rooms, err = s.roomRepo.FindByOrgId(org.Id)
+	pagination := domain.Pagination{Page: 1, CountPerPage: 20}
+
+	roomsResponse, err := s.roomRepo.FindList(pagination, org.Id)
 	if err != nil {
-		log.Printf("organizationService.Find(s.roomRepo.FindByOrgId): %s", err)
+		log.Printf("organizationService.Find(s.roomRepo.FindList): %s", err)
 		return nil, err
 	}
 
-	return org, nil
+	org.Rooms = roomsResponse.Items
 
+	return org, nil
 }
 
 func (s organizationService) Update(o domain.Organization) (domain.Organization, error) {

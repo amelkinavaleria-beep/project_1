@@ -57,6 +57,10 @@ func (c EventController) FindList() http.HandlerFunc {
 			return
 		}
 
-		Success(w, resources.EventDto{}.DomainToDtoCollection(events))
+		Success(w, map[string]interface{}{
+			"items": resources.EventDto{}.DomainToDtoCollection(events),
+			"total": events.Total,
+			"pages": events.Pages,
+		})
 	}
 }
